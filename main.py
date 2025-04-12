@@ -60,7 +60,7 @@ def monitor_endpoints(file_path):
 
     while True:
         for endpoint in endpoints:
-            domain = endpoint.url.split("//")[-1].split("/")[0]
+            domain = endpoint.url.split("//")[-1].split("/")[0].split(":")[0]
             result = check_health(endpoint)
 
             domain_stats[domain]["total"] += 1
