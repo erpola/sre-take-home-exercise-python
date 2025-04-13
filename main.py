@@ -1,10 +1,12 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from collections import defaultdict
 from dataclasses import dataclass
 import requests
+import asyncio
 import yaml
 import time
 import json
+import sys
 
 
 #@dataclass
@@ -25,7 +27,7 @@ def load_config(file_path):
         return yaml.safe_load(file)
 
 # Function to perform health checks
-def check_health(endpoint: Endpoint) -> str:
+async def check_health(endpoint: Endpoint) -> str:
     url = endpoint.url
     method = endpoint.method
     headers = endpoint.headers
@@ -54,37 +56,49 @@ def load_endpoints(data: List[dict]) ->  List[Endpoint]:
     return endpoints
 
 # Main function to monitor endpoints
-def monitor_endpoints(file_path):
+async def monitor_endpoints(file_path):
     domain_stats = defaultdict(lambda: {"up": 0, "total": 0})
     endpoints = load_endpoints(load_config(file_path))
+    
+    async def _handle_domain_stats(endpoint: Endpoint, result: str, domain_stats: defaultdict):
+        domain = endpoint.url.split("//")[-1].split("/")[0].split(":")[0]
+        domain_stats[domain]["total"] += 1
+        if result == "UP":
+            domain_stats[domain]["up"] += 1
+
+    async def _handle_print(domain, stats):
+        print(f"{domain}, has {round(100 * stats["up"] / stats["total"])}% availability percentage")
 
     while True:
-        for endpoint in endpoints:
-            domain = endpoint.url.split("//")[-1].split("/")[0].split(":")[0]
-            result = check_health(endpoint)
+        results = await asyncio.gather(*[
+            check_health(endpoint) 
+            for endpoint in endpoints
+        ])
 
-            domain_stats[domain]["total"] += 1
-            if result == "UP":
-                domain_stats[domain]["up"] += 1
+        await asyncio.gather(*[
+            _handle_domain_stats(endpoint=endpoint, result=result, domain_stats=domain_stats)
+            for endpoint, result in zip(endpoints, results)
+        ])
 
-        # Log cumulative availability percentages
-        for domain, stats in domain_stats.items():
-            availability = round(100 * stats["up"] / stats["total"])
-            print(f"{domain} has {availability}% availability percentage")
+        await asyncio.gather(*[
+            _handle_print(domain, stats)
+            for domain, stats in domain_stats.items()
+        ])
 
         print("---")
-        time.sleep(15)
+        await asyncio.sleep(15)
 
-# Entry point of the program
-if __name__ == "__main__":
-    import sys
-
+async def main():
     if len(sys.argv) != 2:
         print("Usage: python main.py <config_file_path>")
         sys.exit(1)
 
     config_file = sys.argv[1]
     try:
-        monitor_endpoints(config_file)
-    except KeyboardInterrupt:
+        await monitor_endpoints(config_file)
+    except:
         print("\nMonitoring stopped by user.")
+
+# Entry point of the program
+if __name__ == "__main__":
+    asyncio.run(main())
