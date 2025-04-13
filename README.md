@@ -33,6 +33,7 @@ This resulted in the modification of the `monitor_endpoints` function while also
 ##### Reasoning:
 Using `dataclasses` allowed me to clearly define the desired schema of the `Endpoint` object, while also simplifying the implementation of the type requirements for the `body`, `method`, `headers`, `url`, and `name` properties. The introduction of the  `load_endpoints` allowed for improved error handling when a yaml file that is loaded and unpacked does not match the defined schema of the `Endpoint` object.
 
+---
 #### Issue 2:
 The requirement "Endpoint responds in 500ms or less" was not met
 
@@ -43,6 +44,7 @@ This modification to the if statement will ensure that it only evaluates as true
 ##### Reasoning:
 Leveraging the provided method response.elasped.total_seconds() was the most simple and accurate way to satisy this requirement.
 
+---
 #### Issue 3:
 The requirement "Must ignore port numbers when determining domain" was not met
 ##### Solution:
@@ -50,6 +52,7 @@ on line `62`, `.split(":")[0]` was added. This will result in port number being 
 ##### Reasoning:
 This was the most simple method of implementation in order to satisfy the requirement.
 
+---
 #### Issue 4:
 The requirement "Check cycles must run and log availability results every 15 seconds regardless of the number of endpoints or their response times" was not met.
 ##### Solution:
